@@ -1,0 +1,65 @@
+//Configuration of Basic Authentication
+
+<http create-session="stateless">
+   <intercept-url pattern="/api/admin/**" access="ROLE_ADMIN" />
+ 
+   <http-basic />
+</http>
+
+// Configuration of Digest Authentication
+
+<http create-session="stateless" entry-point-ref="digestEntryPoint">
+   <intercept-url pattern="/api/admin/**" access="ROLE_ADMIN" />
+ 
+   <http-basic />
+   <custom-filter ref="digestFilter" after="BASIC_AUTH_FILTER" />
+</http>
+ 
+<beans:bean id="digestFilter" class=
+ "org.springframework.security.web.authentication.www.DigestAuthenticationFilter">
+   <beans:property name="userDetailsService" ref="userService" />
+   <beans:property name="authenticationEntryPoint" ref="digestEntryPoint" />
+</beans:bean>
+ 
+<beans:bean id="digestEntryPoint" class=
+ "org.springframework.security.web.authentication.www.DigestAuthenticationEntryPoint">
+   <beans:property name="realmName" value="Contacts Realm via Digest Authentication"/>
+   <beans:property name="key" value="acegi" />
+</beans:bean>
+ 
+<authentication-manager>
+   <authentication-provider>
+      <user-service id="userService">
+         <user name="eparaschiv" password="eparaschiv" authorities="ROLE_ADMIN" />
+         <user name="user" password="user" authorities="ROLE_USER" />
+      </user-service>
+   </authentication-provider>
+</authentication-manager>
+
+//The tests will consume the REST service by creating a new resource after authenticating with either basic or digest:
+
+@Test
+public void givenAuthenticatedByBasicAuth_whenAResourceIsCreated_then201IsReceived(){
+   // Given
+   // When
+   Response response = given()
+    .auth().preemptive().basic( ADMIN_USERNAME, ADMIN_PASSWORD )
+    .contentType( HttpConstants.MIME_JSON ).body( new Foo( randomAlphabetic( 6 ) ) )
+    .post( paths.getFooURL() );
+ 
+   // Then
+   assertThat( response.getStatusCode(), is( 201 ) );
+}
+@Test
+public void givenAuthenticatedByDigestAuth_whenAResourceIsCreated_then201IsReceived(){
+   // Given
+   // When
+   Response response = given()
+    .auth().digest( ADMIN_USERNAME, ADMIN_PASSWORD )
+    .contentType( HttpConstants.MIME_JSON ).body( new Foo( randomAlphabetic( 6 ) ) )
+    .post( paths.getFooURL() );
+ 
+   // Then
+   assertThat( response.getStatusCode(), is( 201 ) );
+}
+
